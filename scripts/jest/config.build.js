@@ -11,7 +11,13 @@ const packages = readdirSync(packagesRoot).filter(dir => {
     return false;
   }
   const packagePath = join(packagesRoot, dir, 'package.json');
-  return statSync(packagePath).isFile();
+  let stat;
+  try {
+    stat = statSync(packagePath);
+  } catch (err) {
+    return false;
+  }
+  return stat.isFile();
 });
 
 // Create a module map to point React packages to the build output
@@ -37,6 +43,10 @@ packages.forEach(name => {
 module.exports = Object.assign({}, baseConfig, {
   // Redirect imports to the compiled bundles
   moduleNameMapper,
+  modulePathIgnorePatterns: [
+    ...baseConfig.modulePathIgnorePatterns,
+    'packages/react-devtools-shared',
+  ],
   // Don't run bundle tests on -test.internal.* files
   testPathIgnorePatterns: ['/node_modules/', '-test.internal.js$'],
   // Exclude the build output from transforms

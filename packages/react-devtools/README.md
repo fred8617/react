@@ -4,7 +4,7 @@ React DevTools is available as a built-in extension for Chrome and Firefox brows
 
 It works both with React DOM and React Native.
 
-<img src="http://i.imgur.com/IXeHiZD.png" width="600" alt="Screenshot of React DevTools running with React Native">
+![React DevTools screenshot](https://user-images.githubusercontent.com/29597/63811956-bdd9b580-c8dd-11e9-8962-c568e475c425.png)
 
 ## Installation
 Install the `react-devtools` package. Because this is a development tool, a global install is often the most convenient:
@@ -41,13 +41,14 @@ If you're using React Native 0.43 or higher, it should connect to your simulator
 
 ### Integration with React Native Inspector
 
-You can open the [in-app developer menu](https://facebook.github.io/react-native/docs/debugging.html#accessing-the-in-app-developer-menu) and choose "Show Inspector". It will bring up an overlay that lets you tap on any UI element and see information about it:
+You can open the [in-app developer menu](https://reactnative.dev/docs/debugging.html#accessing-the-in-app-developer-menu) and choose "Show Inspector". It will bring up an overlay that lets you tap on any UI element and see information about it:
 
 ![React Native Inspector](http://i.imgur.com/ReFhREb.gif)
 
 However, when `react-devtools` is running, Inspector will enter a special collapsed mode, and instead use the DevTools as primary UI. In this mode, clicking on something in the simulator will bring up the relevant components in the DevTools:
 
-![React DevTools Inspector Integration](http://i.imgur.com/wVgV9RP.gif)
+![React DevTools Inspector Integration](https://user-images.githubusercontent.com/29597/63811958-be724c00-c8dd-11e9-8587-37357334a0e1.gif)
+
 
 You can choose "Hide Inspector" in the same menu to exit this mode.
 
@@ -55,13 +56,13 @@ You can choose "Hide Inspector" in the same menu to exit this mode.
 
 When debugging JavaScript in Chrome, you can inspect the props and state of the React components in the browser console.
 
-First, follow the [instructions for debugging in Chrome](https://facebook.github.io/react-native/docs/debugging.html#chrome-developer-tools) to open the Chrome console.
+First, follow the [instructions for debugging in Chrome](https://reactnative.dev/docs/debugging.html#chrome-developer-tools) to open the Chrome console.
 
 Make sure that the dropdown in the top left corner of the Chrome console says `debuggerWorker.js`. **This step is essential.**
 
 Then select a React component in React DevTools. There is a search box at the top that helps you find one by name. As soon as you select it, it will be available as `$r` in the Chrome console, letting you inspect its props, state, and instance properties.
 
-![React DevTools Chrome Console Integration](http://i.imgur.com/Cpvhs8i.gif)
+![React DevTools Chrome Console Integration](https://user-images.githubusercontent.com/29597/63811957-be724c00-c8dd-11e9-9d1d-8eba440ef948.gif)
 
 
 ## Usage with React DOM
@@ -90,7 +91,44 @@ This will ensure the developer tools are connected. **Don’t forget to remove i
 
 By default DevTools listen to port `8097` on `localhost`. If you need to customize host, port, or other settings, see the `react-devtools-core` package instead.
 
-## Developing
+## FAQ
+
+### The React Tab Doesn't Show Up
+
+**If you are running your app from a local `file://` URL**, don't forget to check "Allow access to file URLs" on the Chrome Extensions settings page. You can find it by opening Settings > Extensions:
+
+![Allow access to file URLs](https://user-images.githubusercontent.com/29597/64646784-95b58080-d3cc-11e9-943d-02474683398a.png)
+
+Or you could develop with a local HTTP server [like `serve`](https://www.npmjs.com/package/serve).
+
+**The React tab won't show up if the site doesn't use React**, or if React can't communicate with the devtools. When the page loads, the devtools sets a global named `__REACT_DEVTOOLS_GLOBAL_HOOK__`, then React communicates with that hook during initialization. You can test this on the [React website](http://facebook.github.io/react/) or by inspecting [Facebook](https://www.facebook.com/).
+
+**If your app is inside of CodePen**, make sure you are registered. Then press Fork (if it's not your pen), and then choose Change View > Debug. The Debug view is inspectable with DevTools because it doesn't use an iframe.
+
+**If your app is inside an iframe, a Chrome extension, React Native, or in another unusual environment**, try [the standalone version instead](https://github.com/facebook/react/tree/master/packages/react-devtools). Chrome apps are currently not inspectable.
+
+**If you still have issues** please [report them](https://github.com/facebook/react/issues/new?labels=Component:%20Developer%20Tools). Don't forget to specify your OS, browser version, extension version, and the exact instructions to reproduce the issue with a screenshot.
+
+## Local development
+The standalone DevTools app can be built and tested from source following the instructions below.
+
+### Prerequisite steps
+DevTools depends on local versions of several NPM packages<sup>1</sup> also in this workspace. You'll need to either build or download those packages first.
+
+<sup>1</sup> Note that at this time, an _experimental_ build is required because DevTools depends on the `createRoot` API.
+
+#### Build from source
+To build dependencies from source, run the following command from the root of the repository:
+```sh
+yarn build-for-devtools
+```
+#### Download from CI
+To use the latest build from CI, run the following command from the root of the repository:
+```sh
+./scripts/release/download-experimental-build.js
+```
+### Build steps
+Once the above packages have been built or downloaded, you can test the standalone DevTools by running the following:
 
 * Run `yarn start:backend` and `yarn start:standalone` in `../react-devtools-core`
 * Run `yarn start` in this folder

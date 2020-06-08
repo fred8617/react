@@ -9,7 +9,8 @@
 
 'use strict';
 
-const {HostComponent} = require('shared/ReactWorkTags');
+const {HostComponent} = require('react-reconciler/src/ReactWorkTags');
+const {PLUGIN_EVENT_SYSTEM} = require('react-dom/src/events/EventSystemFlags');
 
 let EventBatching;
 let EventPluginUtils;
@@ -78,12 +79,12 @@ const _touchConfig = function(
     topType === 'topTouchStart'
       ? allTouchObjects
       : topType === 'topTouchMove'
-        ? allTouchObjects
-        : topType === 'topTouchEnd'
-          ? antiSubsequence(allTouchObjects, changedIndices)
-          : topType === 'topTouchCancel'
-            ? antiSubsequence(allTouchObjects, changedIndices)
-            : null;
+      ? allTouchObjects
+      : topType === 'topTouchEnd'
+      ? antiSubsequence(allTouchObjects, changedIndices)
+      : topType === 'topTouchCancel'
+      ? antiSubsequence(allTouchObjects, changedIndices)
+      : null;
 
   return {
     nativeEvent: touchEvent(
@@ -316,6 +317,7 @@ const run = function(config, hierarchyConfig, nativeEventConfig) {
     nativeEventConfig.targetInst,
     nativeEventConfig.nativeEvent,
     nativeEventConfig.target,
+    PLUGIN_EVENT_SYSTEM,
   );
 
   // At this point the negotiation events have been dispatched as part of the
@@ -402,11 +404,10 @@ describe('ResponderEventPlugin', () => {
   beforeEach(() => {
     jest.resetModules();
 
-    const ReactDOMUnstableNativeDependencies = require('react-dom/unstable-native-dependencies');
     EventBatching = require('legacy-events/EventBatching');
     EventPluginUtils = require('legacy-events/EventPluginUtils');
-    ResponderEventPlugin =
-      ReactDOMUnstableNativeDependencies.ResponderEventPlugin;
+    ResponderEventPlugin = require('legacy-events/ResponderEventPlugin')
+      .default;
 
     deleteAllListeners(GRANDPARENT_INST);
     deleteAllListeners(PARENT_INST);
@@ -1376,7 +1377,8 @@ describe('ResponderEventPlugin', () => {
     // ResponderEventPlugin uses `getLowestCommonAncestor`
     const React = require('react');
     const ReactTestUtils = require('react-dom/test-utils');
-    const ReactTreeTraversal = require('shared/ReactTreeTraversal');
+    const getLowestCommonAncestor = require('legacy-events/ResponderEventPlugin')
+      .getLowestCommonAncestor;
     const ReactDOMComponentTree = require('../../react-dom/src/client/ReactDOMComponentTree');
 
     class ChildComponent extends React.Component {
@@ -1449,7 +1451,7 @@ describe('ResponderEventPlugin', () => {
     let i;
     for (i = 0; i < ancestors.length; i++) {
       const plan = ancestors[i];
-      const firstCommon = ReactTreeTraversal.getLowestCommonAncestor(
+      const firstCommon = getLowestCommonAncestor(
         ReactDOMComponentTree.getInstanceFromNode(plan.one),
         ReactDOMComponentTree.getInstanceFromNode(plan.two),
       );

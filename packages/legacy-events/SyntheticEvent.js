@@ -8,7 +8,7 @@
 /* eslint valid-typeof: 0 */
 
 import invariant from 'shared/invariant';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import {enableModernEventSystem} from 'shared/ReactFeatureFlags';
 
 const EVENT_POOL_SIZE = 10;
 
@@ -77,6 +77,10 @@ function SyntheticEvent(
   this.dispatchConfig = dispatchConfig;
   this._targetInst = targetInst;
   this.nativeEvent = nativeEvent;
+  if (!enableModernEventSystem) {
+    this._dispatchListeners = null;
+    this._dispatchInstances = null;
+  }
 
   const Interface = this.constructor.Interface;
   for (const propName in Interface) {
@@ -153,7 +157,10 @@ Object.assign(SyntheticEvent.prototype, {
    * won't be added back into the pool.
    */
   persist: function() {
-    this.isPersistent = functionThatReturnsTrue;
+    // Modern event system doesn't use pooling.
+    if (!enableModernEventSystem) {
+      this.isPersistent = functionThatReturnsTrue;
+    }
   },
 
   /**
@@ -161,63 +168,68 @@ Object.assign(SyntheticEvent.prototype, {
    *
    * @return {boolean} True if this should not be released, false otherwise.
    */
-  isPersistent: functionThatReturnsFalse,
+  isPersistent: enableModernEventSystem
+    ? functionThatReturnsTrue
+    : functionThatReturnsFalse,
 
   /**
    * `PooledClass` looks for `destructor` on each instance it releases.
    */
   destructor: function() {
-    const Interface = this.constructor.Interface;
-    for (const propName in Interface) {
+    // Modern event system doesn't use pooling.
+    if (!enableModernEventSystem) {
+      const Interface = this.constructor.Interface;
+      for (const propName in Interface) {
+        if (__DEV__) {
+          Object.defineProperty(
+            this,
+            propName,
+            getPooledWarningPropertyDefinition(propName, Interface[propName]),
+          );
+        } else {
+          this[propName] = null;
+        }
+      }
+      this.dispatchConfig = null;
+      this._targetInst = null;
+      this.nativeEvent = null;
+      this.isDefaultPrevented = functionThatReturnsFalse;
+      this.isPropagationStopped = functionThatReturnsFalse;
+      this._dispatchListeners = null;
+      this._dispatchInstances = null;
       if (__DEV__) {
         Object.defineProperty(
           this,
-          propName,
-          getPooledWarningPropertyDefinition(propName, Interface[propName]),
+          'nativeEvent',
+          getPooledWarningPropertyDefinition('nativeEvent', null),
         );
-      } else {
-        this[propName] = null;
-      }
-    }
-    this.dispatchConfig = null;
-    this._targetInst = null;
-    this.nativeEvent = null;
-    this.isDefaultPrevented = functionThatReturnsFalse;
-    this.isPropagationStopped = functionThatReturnsFalse;
-    this._dispatchListeners = null;
-    this._dispatchInstances = null;
-    if (__DEV__) {
-      Object.defineProperty(
-        this,
-        'nativeEvent',
-        getPooledWarningPropertyDefinition('nativeEvent', null),
-      );
-      Object.defineProperty(
-        this,
-        'isDefaultPrevented',
-        getPooledWarningPropertyDefinition(
+        Object.defineProperty(
+          this,
           'isDefaultPrevented',
-          functionThatReturnsFalse,
-        ),
-      );
-      Object.defineProperty(
-        this,
-        'isPropagationStopped',
-        getPooledWarningPropertyDefinition(
+          getPooledWarningPropertyDefinition(
+            'isDefaultPrevented',
+            functionThatReturnsFalse,
+          ),
+        );
+        Object.defineProperty(
+          this,
           'isPropagationStopped',
-          functionThatReturnsFalse,
-        ),
-      );
-      Object.defineProperty(
-        this,
-        'preventDefault',
-        getPooledWarningPropertyDefinition('preventDefault', () => {}),
-      );
-      Object.defineProperty(
-        this,
-        'stopPropagation',
-        getPooledWarningPropertyDefinition('stopPropagation', () => {}),
-      );
+          getPooledWarningPropertyDefinition(
+            'isPropagationStopped',
+            functionThatReturnsFalse,
+          ),
+        );
+        Object.defineProperty(
+          this,
+          'preventDefault',
+          getPooledWarningPropertyDefinition('preventDefault', () => {}),
+        );
+        Object.defineProperty(
+          this,
+          'stopPropagation',
+          getPooledWarningPropertyDefinition('stopPropagation', () => {}),
+        );
+      }
     }
   },
 });
@@ -283,32 +295,40 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
   }
 
   function warn(action, result) {
-    const warningCondition = false;
-    warningWithoutStack(
-      warningCondition,
-      "This synthetic event is reused for performance reasons. If you're seeing this, " +
-        "you're %s `%s` on a released/nullified synthetic event. %s. " +
-        'If you must keep the original synthetic event around, use event.persist(). ' +
-        'See https://fb.me/react-event-pooling for more information.',
-      action,
-      propName,
-      result,
-    );
+    if (__DEV__) {
+      console.error(
+        "This synthetic event is reused for performance reasons. If you're seeing this, " +
+          "you're %s `%s` on a released/nullified synthetic event. %s. " +
+          'If you must keep the original synthetic event around, use event.persist(). ' +
+          'See https://fb.me/react-event-pooling for more information.',
+        action,
+        propName,
+        result,
+      );
+    }
   }
 }
 
-function getPooledEvent(dispatchConfig, targetInst, nativeEvent, nativeInst) {
+function createOrGetPooledEvent(
+  dispatchConfig,
+  targetInst,
+  nativeEvent,
+  nativeInst,
+) {
   const EventConstructor = this;
-  if (EventConstructor.eventPool.length) {
-    const instance = EventConstructor.eventPool.pop();
-    EventConstructor.call(
-      instance,
-      dispatchConfig,
-      targetInst,
-      nativeEvent,
-      nativeInst,
-    );
-    return instance;
+  // Modern event system doesn't use pooling.
+  if (!enableModernEventSystem) {
+    if (EventConstructor.eventPool.length) {
+      const instance = EventConstructor.eventPool.pop();
+      EventConstructor.call(
+        instance,
+        dispatchConfig,
+        targetInst,
+        nativeEvent,
+        nativeInst,
+      );
+      return instance;
+    }
   }
   return new EventConstructor(
     dispatchConfig,
@@ -319,21 +339,28 @@ function getPooledEvent(dispatchConfig, targetInst, nativeEvent, nativeInst) {
 }
 
 function releasePooledEvent(event) {
-  const EventConstructor = this;
-  invariant(
-    event instanceof EventConstructor,
-    'Trying to release an event instance into a pool of a different type.',
-  );
-  event.destructor();
-  if (EventConstructor.eventPool.length < EVENT_POOL_SIZE) {
-    EventConstructor.eventPool.push(event);
+  // Modern event system doesn't use pooling.
+  if (!enableModernEventSystem) {
+    const EventConstructor = this;
+    invariant(
+      event instanceof EventConstructor,
+      'Trying to release an event instance into a pool of a different type.',
+    );
+    event.destructor();
+    if (EventConstructor.eventPool.length < EVENT_POOL_SIZE) {
+      EventConstructor.eventPool.push(event);
+    }
   }
 }
 
 function addEventPoolingTo(EventConstructor) {
-  EventConstructor.eventPool = [];
-  EventConstructor.getPooled = getPooledEvent;
-  EventConstructor.release = releasePooledEvent;
+  EventConstructor.getPooled = createOrGetPooledEvent;
+
+  // Modern event system doesn't use pooling.
+  if (!enableModernEventSystem) {
+    EventConstructor.eventPool = [];
+    EventConstructor.release = releasePooledEvent;
+  }
 }
 
 export default SyntheticEvent;
