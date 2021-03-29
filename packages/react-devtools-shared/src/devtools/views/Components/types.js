@@ -17,7 +17,7 @@ import type {ElementType} from 'react-devtools-shared/src/types';
 // Each element on the frontend corresponds to a Fiber on the backend.
 // Some of its information (e.g. id, type, displayName) come from the backend.
 // Other bits (e.g. weight and depth) are computed on the frontend for windowing and display purposes.
-// Elements are udpated on a push basis– meaning the backend pushes updates to the frontend when needed.
+// Elements are updated on a push basis– meaning the backend pushes updates to the frontend when needed.
 export type Element = {|
   id: number,
   parentID: number,
@@ -56,16 +56,26 @@ export type OwnersList = {|
   owners: Array<Owner> | null,
 |};
 
+export type InspectedElementResponseType =
+  | 'full-data'
+  | 'hydrated-path'
+  | 'no-change'
+  | 'not-found';
+
 export type InspectedElement = {|
   id: number,
 
-  // Does the current renderer support editable hooks?
+  // Does the current renderer support editable hooks and function props?
   canEditHooks: boolean,
-
-  // Does the current renderer support editable function props?
   canEditFunctionProps: boolean,
 
-  // Is this Suspense, and can its value be overriden now?
+  // Does the current renderer support advanced editing interface?
+  canEditHooksAndDeletePaths: boolean,
+  canEditHooksAndRenamePaths: boolean,
+  canEditFunctionPropsDeletePaths: boolean,
+  canEditFunctionPropsRenamePaths: boolean,
+
+  // Is this Suspense, and can its value be overridden now?
   canToggleSuspense: boolean,
 
   // Can view component source location.
@@ -80,6 +90,8 @@ export type InspectedElement = {|
   props: Object | null,
   state: Object | null,
   key: number | string | null,
+  errors: Array<[string, number]>,
+  warnings: Array<[string, number]>,
 
   // List of owners
   owners: Array<Owner> | null,

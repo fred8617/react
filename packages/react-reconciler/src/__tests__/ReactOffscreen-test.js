@@ -21,7 +21,6 @@ describe('ReactOffscreen', () => {
   }
 
   // @gate experimental
-  // @gate new
   it('unstable-defer-without-hiding should never toggle the visibility of its children', async () => {
     function App({mode}) {
       return (
@@ -81,7 +80,6 @@ describe('ReactOffscreen', () => {
   });
 
   // @gate experimental
-  // @gate new
   it('does not defer in legacy mode', async () => {
     let setState;
     function Foo() {
@@ -100,8 +98,11 @@ describe('ReactOffscreen', () => {
           <Text text="Outside" />
         </>,
       );
+
+      ReactNoop.flushSync();
+
       // Should not defer the hidden tree
-      expect(Scheduler).toFlushUntilNextPaint(['A', 'Outside']);
+      expect(Scheduler).toHaveYielded(['A', 'Outside']);
     });
     expect(root).toMatchRenderedOutput(
       <>
@@ -124,8 +125,7 @@ describe('ReactOffscreen', () => {
   });
 
   // @gate experimental
-  // @gate new
-  it('does not defer in blocking mode', async () => {
+  it('does defer in concurrent mode', async () => {
     let setState;
     function Foo() {
       const [state, _setState] = useState('A');
@@ -133,7 +133,7 @@ describe('ReactOffscreen', () => {
       return <Text text={state} />;
     }
 
-    const root = ReactNoop.createBlockingRoot();
+    const root = ReactNoop.createRoot();
     await ReactNoop.act(async () => {
       root.render(
         <>
@@ -143,9 +143,13 @@ describe('ReactOffscreen', () => {
           <Text text="Outside" />
         </>,
       );
-      // Should not defer the hidden tree
-      expect(Scheduler).toFlushUntilNextPaint(['A', 'Outside']);
+      // Should defer the hidden tree.
+      expect(Scheduler).toFlushUntilNextPaint(['Outside']);
     });
+
+    // The hidden tree was rendered at lower priority.
+    expect(Scheduler).toHaveYielded(['A']);
+
     expect(root).toMatchRenderedOutput(
       <>
         <span prop="A" />

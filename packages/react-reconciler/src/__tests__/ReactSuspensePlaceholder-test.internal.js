@@ -310,7 +310,7 @@ describe('ReactSuspensePlaceholder', () => {
     });
 
     describe('when suspending during mount', () => {
-      it('properly accounts for base durations when a suspended times out in a legacy tree', () => {
+      it('properly accounts for base durations when a suspended times out in a legacy tree', async () => {
         ReactNoop.renderLegacySyncRoot(<App shouldSuspend={true} />);
         expect(Scheduler).toHaveYielded([
           'App',
@@ -331,7 +331,10 @@ describe('ReactSuspensePlaceholder', () => {
         jest.advanceTimersByTime(1000);
 
         expect(Scheduler).toHaveYielded(['Promise resolved [Loaded]']);
-        expect(Scheduler).toFlushExpired(['Loaded']);
+
+        ReactNoop.flushSync();
+
+        expect(Scheduler).toHaveYielded(['Loaded']);
         expect(ReactNoop).toMatchRenderedOutput('LoadedText');
         expect(onRender).toHaveBeenCalledTimes(2);
 
@@ -378,7 +381,7 @@ describe('ReactSuspensePlaceholder', () => {
     });
 
     describe('when suspending during update', () => {
-      it('properly accounts for base durations when a suspended times out in a legacy tree', () => {
+      it('properly accounts for base durations when a suspended times out in a legacy tree', async () => {
         ReactNoop.renderLegacySyncRoot(
           <App shouldSuspend={false} textRenderDuration={5} />,
         );
@@ -422,21 +425,15 @@ describe('ReactSuspensePlaceholder', () => {
         expect(ReactNoop).toMatchRenderedOutput('Loading...');
         expect(onRender).toHaveBeenCalledTimes(3);
 
-        if (gate(flags => flags.new)) {
-          expect(onRender.mock.calls[1][2]).toBe(18);
-          expect(onRender.mock.calls[1][3]).toBe(10);
-        } else {
-          // If we force another update while still timed out,
-          // but this time the Text component took 1ms longer to render.
-          // This should impact both actualDuration and treeBaseDuration.
-          expect(onRender.mock.calls[2][2]).toBe(19);
-          expect(onRender.mock.calls[2][3]).toBe(10);
-        }
-
+        expect(onRender.mock.calls[1][2]).toBe(18);
+        expect(onRender.mock.calls[1][3]).toBe(10);
         jest.advanceTimersByTime(1000);
 
         expect(Scheduler).toHaveYielded(['Promise resolved [Loaded]']);
-        expect(Scheduler).toFlushExpired(['Loaded']);
+
+        ReactNoop.flushSync();
+
+        expect(Scheduler).toHaveYielded(['Loaded']);
         expect(ReactNoop).toMatchRenderedOutput('LoadedNew');
         expect(onRender).toHaveBeenCalledTimes(4);
 
